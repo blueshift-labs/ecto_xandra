@@ -21,7 +21,7 @@ defmodule EctoXandra.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:ecto, path: "../ecto"},
+      {:ecto, path: "../ecto", override: true},
       {:ecto_sql, path: "../ecto_sql"},
       {:xandra, path: "../xandra"},
       {:jason, "~> 1.2"}
