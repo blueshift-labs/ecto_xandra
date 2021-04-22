@@ -6,14 +6,16 @@ if Code.ensure_loaded?(Xandra) do
     alias Ecto.Query.{BooleanExpr, QueryExpr}
 
     @behaviour Ecto.Adapters.SQL.Connection
-    @retry_strategy EctoXandra.DefaultRetryStrategy
+    @default_opts [
+      retry_strategy: EctoXandra.DefaultRetryStrategy,
+      decimal_format: :decimal
+    ]
 
     ## Connection
 
     @impl true
     def child_spec(opts) do
       repo = Keyword.fetch!(opts, :repo)
-      opts = Keyword.put_new(opts, :retry_strategy, @retry_strategy)
 
       opts =
         if keyspace = Keyword.get(opts, :keyspace) do
@@ -29,6 +31,8 @@ if Code.ensure_loaded?(Xandra) do
         _ ->
           nil
       end
+
+      opts = Keyword.merge(@default_opts, opts)
 
       :ets.insert(:ecto_xandra_opts, {repo, opts})
 
@@ -79,9 +83,7 @@ if Code.ensure_loaded?(Xandra) do
     end
 
     @impl true
-    def stream(cluster, sql, params, opts) do
-      Xandra.Cluster.stream_pages!(cluster, sql, params, opts)
-    end
+    def stream(_, _, _, _), do: raise("not implemented")
 
     @impl true
     def explain_query(_, _, _, _), do: raise("not implemented")
@@ -179,8 +181,11 @@ if Code.ensure_loaded?(Xandra) do
     defp insert_suffix(opts) do
       suffix =
         case Keyword.get(opts, :overwrite, true) do
-          true -> []
-          _ -> [" IF NOT EXISTS"]
+          true ->
+            []
+
+          _ ->
+            [" IF NOT EXISTS"]
         end
 
       suffix =
