@@ -1,7 +1,6 @@
 defmodule EctoXandra.DefaultRetryStrategy do
   @behaviour Xandra.RetryStrategy
   @retry_count 5
-  @consistency :quorum
 
   @impl true
   def new(options) do
