@@ -22,6 +22,13 @@ defmodule EctoXandra.Types.Set do
     if is_list(casted), do: {:ok, MapSet.new(casted)}, else: casted
   end
 
+  def cast(val, %{type: type} = opts) do
+    case EctoXandra.Types.apply(type, :cast, val, opts) do
+      {:ok, casted} -> {:ok, MapSet.new([casted])}
+      err -> err
+    end
+  end
+
   def cast(%MapSet{} = mapset, opts) do
     mapset |> MapSet.to_list() |> cast(opts)
   end

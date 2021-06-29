@@ -22,6 +22,13 @@ defmodule EctoXandra.Types.List do
     if is_list(casted), do: {:ok, Enum.reverse(casted)}, else: casted
   end
 
+  def cast(val, %{type: type} = opts) do
+    case EctoXandra.Types.apply(type, :cast, val, opts) do
+      {:ok, casted} -> {:ok, [casted]}
+      err -> err
+    end
+  end
+
   def cast({op, val}, opts) when op in [:add, :remove] do
     case cast(val, opts) do
       {:ok, casted} -> {:ok, {op, casted}}
