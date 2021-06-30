@@ -11,6 +11,8 @@ defmodule EctoXandra.Types.Map do
   end
 
   @impl true
+  def cast(nil, _), do: {:ok, %{}}
+
   def cast(%{} = map, %{key: key_type, value: value_type} = opts) do
     casted =
       Enum.reduce_while(map, %{}, fn {k, v}, acc ->
