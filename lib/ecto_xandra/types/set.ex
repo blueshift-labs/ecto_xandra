@@ -12,6 +12,13 @@ defmodule EctoXandra.Types.Set do
   @impl true
   def cast(nil, _), do: {:ok, MapSet.new()}
 
+  def cast({op, val}, opts) when op in [:add, :remove] do
+    case cast(val, opts) do
+      {:ok, casted} -> {:ok, {op, casted}}
+      other -> other
+    end
+  end
+
   def cast(list, %{type: type} = opts) when is_list(list) do
     casted =
       Enum.reduce_while(list, [], fn elem, acc ->
@@ -33,13 +40,6 @@ defmodule EctoXandra.Types.Set do
 
   def cast(%MapSet{} = mapset, opts) do
     mapset |> MapSet.to_list() |> cast(opts)
-  end
-
-  def cast({op, val}, opts) when op in [:add, :remove] do
-    case cast(val, opts) do
-      {:ok, casted} -> {:ok, {op, casted}}
-      other -> other
-    end
   end
 
   def cast(_, _), do: :error

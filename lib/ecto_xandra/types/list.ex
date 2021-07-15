@@ -12,6 +12,13 @@ defmodule EctoXandra.Types.List do
   @impl true
   def cast(nil, _), do: {:ok, []}
 
+  def cast({op, val}, opts) when op in [:add, :remove] do
+    case cast(val, opts) do
+      {:ok, casted} -> {:ok, {op, casted}}
+      other -> other
+    end
+  end
+
   def cast(list, %{type: type} = opts) when is_list(list) do
     casted =
       Enum.reduce_while(list, [], fn elem, acc ->
@@ -28,13 +35,6 @@ defmodule EctoXandra.Types.List do
     case EctoXandra.Types.apply(type, :cast, val, opts) do
       {:ok, casted} -> {:ok, [casted]}
       err -> err
-    end
-  end
-
-  def cast({op, val}, opts) when op in [:add, :remove] do
-    case cast(val, opts) do
-      {:ok, casted} -> {:ok, {op, casted}}
-      other -> other
     end
   end
 

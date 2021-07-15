@@ -13,6 +13,13 @@ defmodule EctoXandra.Types.Map do
   @impl true
   def cast(nil, _), do: {:ok, %{}}
 
+  def cast({op, %{} = map}, opts) when op in [:add, :remove] do
+    case cast(map, opts) do
+      {:ok, casted} -> {:ok, {op, casted}}
+      other -> other
+    end
+  end
+
   def cast(%{} = map, %{key: key_type, value: value_type} = opts) do
     casted =
       Enum.reduce_while(map, %{}, fn {k, v}, acc ->
@@ -25,13 +32,6 @@ defmodule EctoXandra.Types.Map do
       end)
 
     if is_map(casted), do: {:ok, casted}, else: casted
-  end
-
-  def cast({op, %{} = map}, opts) when op in [:add, :remove] do
-    case cast(map, opts) do
-      {:ok, casted} -> {:ok, {op, casted}}
-      other -> other
-    end
   end
 
   def cast(_, _), do: :error
