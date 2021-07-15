@@ -17,6 +17,74 @@ defmodule EctoXandra do
     end
   end
 
+  @behaviour Ecto.Adapter.Storage
+  @impl true
+  def storage_up(opts) do
+    keyspace = Keyword.fetch!(opts, :keyspace)
+
+    Application.ensure_all_started(:xandra)
+
+    {:ok, conn} =
+      Xandra.start_link(Keyword.take(opts, [:nodes, :protocol_version, :log, :timeout]))
+
+    stmt = """
+    CREATE KEYSPACE IF NOT EXISTS #{keyspace}
+    WITH replication = {'class': 'SimpleStrategy', 'replication_factor': '1'}
+    AND durable_writes = true;
+    """
+
+    case Xandra.execute(conn, stmt) do
+      {:ok, %Xandra.SchemaChange{effect: "CREATED"}} -> :ok
+      {:ok, %Xandra.Void{}} -> {:error, :already_up}
+      err -> err
+    end
+  end
+
+  @impl true
+  def storage_down(opts) do
+    keyspace = Keyword.fetch!(opts, :keyspace)
+
+    Application.ensure_all_started(:xandra)
+
+    {:ok, conn} =
+      Xandra.start_link(Keyword.take(opts, [:nodes, :protocol_version, :log, :timeout]))
+
+    stmt = """
+    DROP KEYSPACE IF EXISTS #{keyspace};
+    """
+
+    case Xandra.execute(conn, stmt) do
+      {:ok, %Xandra.SchemaChange{effect: "DROPPED"}} -> :ok
+      {:ok, %Xandra.Void{}} -> {:error, :already_down}
+      err -> err
+    end
+  end
+
+  @impl Ecto.Adapter.Storage
+  def storage_status(opts) do
+    keyspace = Keyword.fetch!(opts, :keyspace)
+
+    Application.ensure_all_started(:xandra)
+
+    {:ok, conn} =
+      Xandra.start_link(Keyword.take(opts, [:nodes, :protocol_version, :log, :timeout]))
+
+    stmt = """
+    USE #{keyspace};
+    """
+
+    case Xandra.execute(conn, stmt) do
+      {:error, %Xandra.Error{reason: :invalid}} ->
+        :down
+
+      {:error, reason} ->
+        {:error, reason}
+
+      _ ->
+        :up
+    end
+  end
+
   use Ecto.Adapters.SQL, driver: :xandra
 
   @impl Ecto.Adapter.Schema
