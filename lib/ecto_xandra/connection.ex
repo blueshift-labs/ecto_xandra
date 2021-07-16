@@ -77,6 +77,7 @@ if Code.ensure_loaded?(Xandra) do
 
       case result do
         {:ok, %Xandra.Void{}} -> {:ok, %{rows: nil, num_rows: 1}}
+        {:ok, %Xandra.SchemaChange{}} -> {:ok, %{rows: nil, num_rows: 1}}
         {:ok, %Xandra.Page{} = page} -> {:ok, process_page(page)}
         {:error, error} -> {:error, error}
       end
