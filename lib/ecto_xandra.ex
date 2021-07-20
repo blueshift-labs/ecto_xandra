@@ -1,3 +1,8 @@
+Code.ensure_loaded?(EctoXandra.Types.Map)
+Code.ensure_loaded?(EctoXandra.Types.Json)
+Code.ensure_loaded?(EctoXandra.Types.List)
+Code.ensure_loaded?(EctoXandra.Types.Set)
+
 defmodule EctoXandra do
   defimpl String.Chars, for: Xandra.Simple do
     def to_string(simple) do
