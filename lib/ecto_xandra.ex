@@ -101,6 +101,8 @@ defmodule EctoXandra do
         returning,
         opts
       ) do
+    opts = put_source(opts, source)
+
     [{^repo, repo_opts}] = :ets.lookup(:ecto_xandra_opts, repo)
 
     {fields, _} = :lists.unzip(params)
@@ -130,6 +132,8 @@ defmodule EctoXandra do
         returning,
         opts
       ) do
+    opts = put_source(opts, source)
+
     [{^repo, repo_opts}] = :ets.lookup(:ecto_xandra_opts, repo)
 
     sql = @conn.update(prefix, source, fields, params, returning)
@@ -156,6 +160,8 @@ defmodule EctoXandra do
         params,
         opts
       ) do
+    opts = put_source(opts, source)
+
     [{^repo, repo_opts}] = :ets.lookup(:ecto_xandra_opts, repo)
 
     sql = @conn.delete(prefix, source, params, [])
@@ -235,4 +241,7 @@ defmodule EctoXandra do
         ecto_type
     end
   end
+
+  def put_source(opts, source) when is_binary(source), do: Keyword.put(opts, :source, source)
+  def put_source(opts, _), do: opts
 end

@@ -34,7 +34,7 @@ defmodule EctoXandra.Types.Set do
   def cast(val, %{split: true} = opts) when is_binary(val) do
     splitter = Map.get(opts, :splitter, ~r|\s*,\s*|)
     opts = [trim: Map.get(opts, :trim, true)]
-    {:ok, String.split(String.trim(val), splitter, opts)|>MapSet.new()}
+    {:ok, String.split(String.trim(val), splitter, opts) |> MapSet.new()}
   end
 
   def cast(val, %{type: type} = opts) do
