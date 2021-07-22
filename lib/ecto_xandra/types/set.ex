@@ -31,6 +31,12 @@ defmodule EctoXandra.Types.Set do
     if is_list(casted), do: {:ok, MapSet.new(casted)}, else: casted
   end
 
+  def cast(val, %{split: true} = opts) when is_binary(val) do
+    splitter = Map.get(opts, :splitter, ~r|\s*,\s*|)
+    opts = [trim: Map.get(opts, :trim, true)]
+    {:ok, String.split(String.trim(val), splitter, opts)|>MapSet.new()}
+  end
+
   def cast(val, %{type: type} = opts) do
     case EctoXandra.Types.apply(type, :cast, val, opts) do
       {:ok, casted} -> {:ok, MapSet.new([casted])}

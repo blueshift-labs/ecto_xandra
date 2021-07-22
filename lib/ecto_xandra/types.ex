@@ -8,7 +8,7 @@ defmodule EctoXandra.Types do
         apply(type, op, [value, opts])
 
       true ->
-        {:ok, value}
+        Ecto.Type.cast(type, value)
     end
   end
 end
