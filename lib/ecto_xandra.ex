@@ -90,7 +90,15 @@ defmodule EctoXandra do
     end
   end
 
+  @impl true
+  def in_transaction?(%{sql: EctoXandra.Connection}), do: true
+
   use Ecto.Adapters.SQL, driver: :xandra
+
+  @impl true
+  def loaders({:map, _}, type), do: [&Ecto.Type.embedded_load(type, Jason.decode!(&1), :json)]
+  def loaders(:binary_id, type), do: [Ecto.UUID, type]
+  def loaders(_, type), do: [type]
 
   @impl Ecto.Adapter.Schema
   def insert(
@@ -204,7 +212,7 @@ defmodule EctoXandra do
     for source <- Keyword.keys(params) do
       field = source_field(schema, source)
       ecto_type = schema.__schema__(:type, field)
-      {xandra_type(ecto_type) |> to_string(), source_value(params[source])}
+      {xandra_type(ecto_type) |> to_string(), source_value(ecto_type, params[source])}
     end
   end
 
@@ -216,9 +224,10 @@ defmodule EctoXandra do
     end)
   end
 
-  defp source_value({:add, source}), do: source
-  defp source_value({:remove, source}), do: source
-  defp source_value(source), do: source
+  defp source_value({:parameterized, Ecto.Embedded, _}, value), do: Jason.encode!(value)
+  defp source_value(_, {:add, value}), do: value
+  defp source_value(_, {:remove, value}), do: value
+  defp source_value(_, value), do: value
 
   def xandra_type(:id), do: :bigint
   def xandra_type(:binary_id), do: :uuid
@@ -227,6 +236,8 @@ defmodule EctoXandra do
   def xandra_type(:binary), do: :blob
 
   def xandra_type(t) when t in [:utc_datetime, :utc_datetime_usec], do: :timestamp
+
+  def xandra_type({:parameterized, Ecto.Embedded, _}), do: :text
 
   def xandra_type({:parameterized, type, opts}) do
     type.type(opts)
