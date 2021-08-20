@@ -19,6 +19,8 @@ defmodule EctoXandra.Types.Set do
     end
   end
 
+  def cast(%MapSet{} = set, opts), do: cast(MapSet.to_list(set), opts)
+
   def cast(list, %{type: type} = opts) when is_list(list) do
     casted =
       Enum.reduce_while(list, [], fn elem, acc ->

@@ -96,7 +96,9 @@ defmodule EctoXandra do
   use Ecto.Adapters.SQL, driver: :xandra
 
   @impl true
-  def loaders({:map, _}, type), do: [&Ecto.Type.embedded_load(type, Jason.decode!(&1), :json)]
+  def loaders({:map, _}, type),
+    do: [&Ecto.Type.embedded_load(type, Jason.decode!(&1 || "null"), :json)]
+
   def loaders(:binary_id, type), do: [Ecto.UUID, type]
   def loaders(_, type), do: [type]
 
