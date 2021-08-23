@@ -1,4 +1,10 @@
 defmodule EctoXandra.Types.Set do
+  defimpl Jason.Encoder, for: MapSet do
+    def encode(set, opts) do
+      Jason.Encode.list(MapSet.to_list(set), opts)
+    end
+  end
+
   use Ecto.ParameterizedType
 
   @impl true
@@ -73,9 +79,12 @@ defmodule EctoXandra.Types.Set do
   def dump(mapset, _dumper, _opts), do: {:ok, mapset}
 
   @impl true
+  def equal?(nil, nil, _opts), do: true
+  def equal?(nil, _, _opts), do: false
+  def equal?(_, nil, _opts), do: false
+  def equal?({_, %MapSet{}}, {_, %MapSet{}}, _opts), do: false
   def equal?(%MapSet{}, {_, %MapSet{}}, _opts), do: false
   def equal?({_, %MapSet{}}, %MapSet{}, _opts), do: false
-  def equal?({_, %MapSet{}}, {_, %MapSet{}}, _opts), do: false
   def equal?(%MapSet{} = a, %MapSet{} = b, _opts), do: MapSet.equal?(a, b)
   def equal?(_, _, _), do: false
 

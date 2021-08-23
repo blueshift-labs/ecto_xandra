@@ -21,6 +21,7 @@ defmodule EctoXandra.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
+      {:timex, "~> 3.7"},
       {:ecto, "~> 3.6"},
       {:ecto_sql, "~> 3.6"},
       {:xandra, "~> 0.13.1"},

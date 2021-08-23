@@ -39,6 +39,9 @@ defmodule EctoXandra.Types.Json do
   end
 
   @impl true
+  def equal?(nil, nil, _opts), do: true
+  def equal?(nil, _, _opts), do: false
+  def equal?(_, nil, _opts), do: false
   def equal?(%{} = a, %{} = b, _), do: Map.equal?(a, b)
   def equal?(a, b, _) when is_list(a) and is_list(b), do: a == b
   def equal?(_, _, _), do: false

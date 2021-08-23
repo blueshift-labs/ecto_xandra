@@ -59,6 +59,12 @@ defmodule EctoXandra.Types.Map do
   def dump(map, _dumper, _opts), do: {:ok, map}
 
   @impl true
+  def equal?(nil, nil, _opts), do: true
+  def equal?(nil, _, _opts), do: false
+  def equal?(_, nil, _opts), do: false
+  def equal?({_, %{}}, {_, %{}}, _opts), do: false
+  def equal?(%{}, {_, %{}}, _opts), do: false
+  def equal?({_, %{}}, %{}, _opts), do: false
   def equal?(%{} = a, %{} = b, _opts), do: Map.equal?(a, b)
   def equal?(_, _, _), do: false
 
