@@ -79,13 +79,12 @@ defmodule EctoXandra.Types.Set do
   def dump(mapset, _dumper, _opts), do: {:ok, mapset}
 
   @impl true
-  def equal?(nil, nil, _opts), do: true
-  def equal?(nil, _, _opts), do: false
-  def equal?(_, nil, _opts), do: false
-  def equal?({_, %MapSet{}}, {_, %MapSet{}}, _opts), do: false
-  def equal?(%MapSet{}, {_, %MapSet{}}, _opts), do: false
-  def equal?({_, %MapSet{}}, %MapSet{}, _opts), do: false
-  def equal?(%MapSet{} = a, %MapSet{} = b, _opts), do: MapSet.equal?(a, b)
+  def equal?({_, _}, _, _), do: false
+  def equal?(_, {_, _}, _), do: false
+  def equal?(nil, nil, _), do: true
+  def equal?(nil, data, _), do: Enum.empty?(data)
+  def equal?(data, nil, _), do: Enum.empty?(data)
+  def equal?(%MapSet{} = a, %MapSet{} = b, _), do: MapSet.equal?(a, b)
   def equal?(_, _, _), do: false
 
   def embed_as(_), do: :self

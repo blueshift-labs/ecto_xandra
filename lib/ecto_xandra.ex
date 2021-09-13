@@ -100,8 +100,7 @@ defmodule EctoXandra do
   @impl true
   def loaders(
         {:map, _},
-        {:parameterized, Ecto.Embedded,
-         %Ecto.Embedded{cardinality: :many, unique: true}} = type
+        {:parameterized, Ecto.Embedded, %Ecto.Embedded{cardinality: :many, unique: true}} = type
       ) do
     loader = fn value ->
       case Jason.decode!(value || "null") do
