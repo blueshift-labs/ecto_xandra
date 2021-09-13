@@ -1,8 +1,4 @@
-defmodule EctoCassTest do
+defmodule EctoXandraTest do
   use ExUnit.Case
-  doctest EctoCass
-
-  test "greets the world" do
-    assert EctoCass.hello() == :world
-  end
+  doctest EctoXandra
 end

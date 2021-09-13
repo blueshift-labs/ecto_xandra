@@ -11,12 +11,14 @@ defmodule EctoXandra.Types.Timestamp do
 
   @impl true
   def cast(nil), do: {:ok, nil}
+
   def cast(input) when is_binary(input) do
     case Timex.parse(input, "{RFC3339}") do
       {:ok, %DateTime{} = t} -> {:ok, t}
       {:error, _} -> :error
     end
   end
+
   def cast(%DateTime{} = t), do: {:ok, t}
   def cast(_), do: :error
 
@@ -39,12 +41,14 @@ defmodule EctoXandra.Types.Timestamp do
   def equal?(nil, nil), do: true
   def equal?(_, nil), do: false
   def equal?(nil, _), do: false
+
   def equal?(%DateTime{} = t1, %DateTime{} = t2) do
     DateTime.compare(
       DateTime.truncate(t1, :millisecond),
       DateTime.truncate(t2, :millisecond)
     ) == :eq
   end
+
   def equal?(_, _), do: false
 
   @impl true

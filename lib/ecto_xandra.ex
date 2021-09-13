@@ -96,7 +96,27 @@ defmodule EctoXandra do
 
   use Ecto.Adapters.SQL, driver: :xandra
 
+  # decode from map if it embeds_many with unique primary_keys
   @impl true
+  def loaders(
+        {:map, _},
+        {:parameterized, Ecto.Embedded,
+         %Ecto.Embedded{cardinality: :many, unique: true}} = type
+      ) do
+    loader = fn value ->
+      case Jason.decode!(value || "null") do
+        %{} = data ->
+          data = Map.values(data) |> Enum.sort_by(&Map.get(&1, "__index__"))
+          Ecto.Type.embedded_load(type, data, :json)
+
+        data ->
+          Ecto.Type.embedded_load(type, data, :json)
+      end
+    end
+
+    [loader]
+  end
+
   def loaders({:map, _}, type),
     do: [&Ecto.Type.embedded_load(type, Jason.decode!(&1 || "null"), :json)]
 
@@ -225,6 +245,33 @@ defmodule EctoXandra do
       ^source -> true
       field -> schema.__schema__(:field_source, field) == source
     end)
+  end
+
+  # encode values into map if it embeds_many with unique primary_keys
+  defp source_value(
+         {:parameterized, Ecto.Embedded,
+          %Ecto.Embedded{cardinality: :many, unique: true, ordered: ordered, related: schema}},
+         values
+       )
+       when is_list(values) do
+    primary_keys =
+      schema.__schema__(:primary_key)
+      |> Enum.map(&schema.__schema__(:field_source, &1))
+
+    if primary_keys == [] do
+      Jason.encode!(values)
+    else
+      data =
+        values
+        |> Enum.with_index()
+        |> Enum.reduce(%{}, fn {value, index}, acc ->
+          key = primary_keys |> Enum.map(&Map.get(value, &1)) |> Enum.join("/")
+          value = if ordered, do: Map.put(value, :__index__, index), else: value
+          Map.put(acc, key, value)
+        end)
+
+      Jason.encode!(data)
+    end
   end
 
   defp source_value({:parameterized, Ecto.Embedded, _}, value), do: Jason.encode!(value)
