@@ -24,7 +24,7 @@ defmodule EctoXandra.MixProject do
       {:timex, "~> 3.7"},
       {:ecto, "~> 3.6"},
       {:ecto_sql, "~> 3.6"},
-      {:xandra, "~> 0.13.1"},
+      {:xandra, git: "https://github.com/blueshift-labs/xandra.git", tag: "v0.13.1.tmp"},
       {:jason, "~> 1.2"}
 
       # {:dep_from_hexpm, "~> 0.3.0"},
