@@ -20,7 +20,13 @@ defmodule EctoXandra.Types.Timestamp do
   end
 
   def cast(%DateTime{} = t), do: {:ok, t}
-  def cast(_), do: :error
+
+  def cast(dt) do
+    case Timex.to_datetime(dt) do
+      {:error, _} -> :error
+      dt -> cast(dt)
+    end
+  end
 
   @impl true
   def load(nil), do: {:ok, nil}
