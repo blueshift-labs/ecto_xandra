@@ -40,8 +40,6 @@ defmodule EctoXandra.Types.Json do
 
   @impl true
   def equal?(nil, nil, _), do: true
-  def equal?(nil, data, _), do: Enum.empty?(data)
-  def equal?(data, nil, _), do: Enum.empty?(data)
   def equal?(%{} = a, %{} = b, _), do: Map.equal?(a, b)
   def equal?(a, b, _) when is_list(a) and is_list(b), do: a == b
   def equal?(_, _, _), do: false
