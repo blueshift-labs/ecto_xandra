@@ -131,7 +131,12 @@ if Code.ensure_loaded?(Xandra) do
     def update_all(_), do: raise("not implemented")
 
     @impl true
-    def delete_all(_), do: raise("not implemented")
+    def delete_all(query) do
+      sources = create_names(query, [])
+      from = from(query, sources)
+      where = where(query, sources)
+      ["DELETE", from, where]
+    end
 
     ## DDL
 
