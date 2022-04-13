@@ -43,15 +43,41 @@ if Code.ensure_loaded?(Xandra) do
 
     @impl true
     def prepare_execute(cluster, _name, sql, params, opts) do
-      Xandra.Cluster.run(cluster, fn conn ->
-        case Xandra.prepare(conn, sql) do
-          {:ok, %Prepared{} = prepared} ->
-            result = Xandra.execute(conn, prepared, params, opts)
+      do_exec(cluster, sql, params, opts)
+    end
 
-            case result do
-              {:ok, %Xandra.Void{}} -> {:ok, prepared, %{rows: nil, num_rows: 1}}
-              {:ok, %Xandra.Page{} = page} -> {:ok, prepared, process_page(page)}
-              {:error, error} -> {:error, error}
+    defp do_prepare(_conn, %Prepared{} = sql) do
+      {:ok, sql}
+    end
+
+    defp do_prepare(conn, sql) when is_binary(sql) do
+      Xandra.prepare(conn, sql)
+    end
+
+    defp do_exec(cluster, sql, params, opts) do
+      Xandra.Cluster.run(cluster, fn conn ->
+        case do_prepare(conn, sql) do
+          {:ok, %Prepared{} = prepared} ->
+            try do
+              stream = Xandra.stream_pages!(conn, prepared, params, opts)
+
+              result =
+                Enum.reduce_while(stream, %{rows: [], num_rows: 0}, fn
+                  %Xandra.Void{}, _acc ->
+                    {:halt, %{rows: nil, num_rows: 1}}
+
+                  %Xandra.SchemaChange{}, _acc ->
+                    {:halt, %{rows: nil, num_rows: 1}}
+
+                  %Xandra.Page{} = page, %{rows: rows, num_rows: num_rows} ->
+                    %{rows: new_rows, num_rows: new_num_rows} = process_page(page)
+                    {:cont, %{rows: rows ++ new_rows, num_rows: num_rows + new_num_rows}}
+                end)
+
+              {:ok, prepared, result}
+            rescue
+              err ->
+                {:error, err}
             end
 
           {:error, error} ->
@@ -66,20 +92,17 @@ if Code.ensure_loaded?(Xandra) do
 
       case result do
         {:ok, %Xandra.Void{}} -> {:ok, %{rows: nil, num_rows: 1}}
-        {:ok, %Xandra.Page{} = page} -> {:ok, process_page(page)}
+        {:ok, %Xandra.Page{paging_state: nil} = page} -> {:ok, process_page(page)}
         {:error, error} -> {:error, error}
       end
     end
 
     @impl true
     def execute(cluster, query, params, opts) do
-      result = Xandra.Cluster.execute(cluster, query, params, opts)
-
-      case result do
-        {:ok, %Xandra.Void{}} -> {:ok, %{rows: nil, num_rows: 1}}
-        {:ok, %Xandra.SchemaChange{}} -> {:ok, %{rows: nil, num_rows: 1}}
-        {:ok, %Xandra.Page{} = page} -> {:ok, process_page(page)}
-        {:error, error} -> {:error, error}
+      do_exec(cluster, query, params, opts)
+      |> case do
+        {:error, err} -> {:error, err}
+        {:ok, _prepared, result} -> {:ok, result}
       end
     end
 
