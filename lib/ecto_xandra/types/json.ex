@@ -28,6 +28,8 @@ defmodule EctoXandra.Types.Json do
     end
   end
 
+  def load(nil, _, _), do: {:ok, nil}
+
   @impl true
   def dump(nil, dumper, %{default: default} = opts), do: dump(default, dumper, opts)
 
