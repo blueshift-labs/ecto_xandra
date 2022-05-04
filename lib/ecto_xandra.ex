@@ -216,6 +216,7 @@ defmodule EctoXandra do
     [{^repo, repo_opts}] = :ets.lookup(:ecto_xandra_opts, repo)
 
     Ecto.Adapters.SQL.execute(
+      :named,
       adapter_meta,
       query_meta,
       query,
