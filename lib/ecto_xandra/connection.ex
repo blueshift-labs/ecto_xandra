@@ -98,6 +98,11 @@ if Code.ensure_loaded?(Xandra) do
     end
 
     @impl true
+    def query_many(_cluster, _sql, _params, _opts) do
+      raise RuntimeError, "query_many is not supported in the Xandra adapter"
+    end
+
+    @impl true
     def execute(cluster, query, params, opts) do
       do_exec(cluster, query, params, opts)
       |> case do
