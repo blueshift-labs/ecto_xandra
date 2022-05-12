@@ -37,7 +37,7 @@ config :test_app, TestApp.Repo,
   retry_count: 5
   log_level: :debug
 
-config :utx, ecto_repos: [TestApp.Repo]
+config :test_app, ecto_repos: [TestApp.Repo]
 
 ```
 
@@ -71,7 +71,7 @@ defmodule TestApp.Model do
     field :created_at, Timestamp, autogenerate: true
     field :updated_at, Timestamp
   end
-
+end
 ```
 
 Setup & Migration

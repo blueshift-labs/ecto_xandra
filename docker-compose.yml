@@ -1,0 +1,11 @@
+version: '3'
+services:
+  scylladb:
+    image: scylladb/scylla:4.4.1
+    container_name: scylladb
+    restart: always
+    ports:
+      - '9042:9042'
+    volumes:
+      - './data/scylladb:/var/lib/scylladb:delegated'
+    command: --smp=2 --skip-wait-for-gossip-to-settle=0

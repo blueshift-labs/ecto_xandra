@@ -25,3 +25,7 @@ ecto_cass-*.tar
 
 # Temporary files for e.g. tests
 /tmp
+
+data
+
+.DS_Store
