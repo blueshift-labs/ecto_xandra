@@ -259,6 +259,13 @@ defmodule EctoXandra do
       |> Enum.map(&schema.__schema__(:field_source, &1))
 
     if primary_keys == [] do
+      values =
+        Enum.map(values, fn value ->
+          value
+          |> Enum.reject(&match?({_, nil}, &1))
+          |> Enum.into(%{})
+        end)
+
       Jason.encode!(values)
     else
       data =
@@ -267,11 +274,24 @@ defmodule EctoXandra do
         |> Enum.reduce(%{}, fn {value, index}, acc ->
           key = primary_keys |> Enum.map(&Map.get(value, &1)) |> Enum.join("/")
           value = if ordered, do: Map.put(value, :__index__, index), else: value
+
+          value =
+            value
+            |> Enum.reject(&match?({_, nil}, &1))
+            |> Enum.into(%{})
+
           Map.put(acc, key, value)
         end)
 
       Jason.encode!(data)
     end
+  end
+
+  defp source_value({:parameterized, Ecto.Embedded, _}, %{} = value) do
+    value
+    |> Enum.reject(&match?({_, nil}, &1))
+    |> Enum.into(%{})
+    |> Jason.encode!()
   end
 
   defp source_value({:parameterized, Ecto.Embedded, _}, value), do: Jason.encode!(value)
