@@ -70,8 +70,6 @@ defmodule EctoXandra.Types.List do
   def equal?({_, _}, _, _), do: false
   def equal?(_, {_, _}, _), do: false
   def equal?(nil, nil, _), do: true
-  def equal?(nil, data, _), do: Enum.empty?(data)
-  def equal?(data, nil, _), do: Enum.empty?(data)
   def equal?(a, b, _) when is_list(a) and is_list(b), do: a == b
   def equal?(_, _, _), do: false
 
