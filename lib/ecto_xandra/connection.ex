@@ -17,6 +17,15 @@ if Code.ensure_loaded?(Xandra) do
     def child_spec(opts) do
       repo = Keyword.fetch!(opts, :repo)
 
+      {compress, opts} = Keyword.pop(opts, :compress, false)
+
+      opts =
+        if compress do
+          Keyword.put(opts, :compressor, EctoXandra.LZ4Compressor)
+        else
+          opts
+        end
+
       opts =
         if keyspace = Keyword.get(opts, :keyspace) do
           Keyword.put(opts, :after_connect, &Xandra.execute!(&1, "USE #{keyspace}"))
@@ -140,9 +149,7 @@ if Code.ensure_loaded?(Xandra) do
       keys = headers |> Enum.join(", ")
       values = rows |> Enum.map(&Enum.map_join(&1, ", ", fn _ -> "?" end))
 
-      "INSERT INTO #{quote_table(prefix, table)} (#{keys}) VALUES (#{values}) #{
-        insert_suffix(opts)
-      }"
+      "INSERT INTO #{quote_table(prefix, table)} (#{keys}) VALUES (#{values}) #{insert_suffix(opts)}"
     end
 
     @impl true
