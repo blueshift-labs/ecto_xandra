@@ -5,6 +5,9 @@ defmodule EctoXandra.Types.List do
   def type(%{type: type}), do: "list<#{EctoXandra.xandra_type(type)}>"
 
   @impl true
+  def type(type), do: "list<#{EctoXandra.xandra_type(type)}>"
+
+  @impl true
   def init(opts) do
     Enum.into(opts, %{})
   end

@@ -11,6 +11,9 @@ defmodule EctoXandra.Types.Set do
   def type(%{type: type}), do: "set<#{EctoXandra.xandra_type(type)}>"
 
   @impl true
+  def type(type), do: "set<#{EctoXandra.xandra_type(type)}>"
+
+  @impl true
   def init(opts) do
     Enum.into(opts, %{})
   end

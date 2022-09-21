@@ -5,6 +5,7 @@ if Code.ensure_loaded?(Xandra) do
     alias Xandra.Prepared
     alias Ecto.Query.{BooleanExpr, QueryExpr}
 
+    @max_attempts 5
     @behaviour Ecto.Adapters.SQL.Connection
     @default_opts [
       retry_strategy: EctoXandra.DefaultRetryStrategy,
@@ -97,12 +98,33 @@ if Code.ensure_loaded?(Xandra) do
 
     @impl true
     def query(cluster, sql, params, opts) do
+      attempts = Keyword.get(opts, :attempts, 0)
+
+      if attempts > 0 do
+        Process.sleep(2 ** attempts * 100)
+      end
+
       result = Xandra.Cluster.execute(cluster, sql, params, opts)
 
       case result do
-        {:ok, %Xandra.Void{}} -> {:ok, %{rows: nil, num_rows: 1}}
-        {:ok, %Xandra.Page{paging_state: nil} = page} -> {:ok, process_page(page)}
-        {:error, error} -> {:error, error}
+        {:ok, %Xandra.Void{}} ->
+          {:ok, %{rows: nil, num_rows: 1}}
+
+        {:ok, %Xandra.Page{paging_state: nil} = page} ->
+          {:ok, process_page(page)}
+
+        {:ok, %Xandra.SchemaChange{} = schema_change} ->
+          {:ok, schema_change}
+
+        {:error, %Xandra.ConnectionError{reason: {:cluster, :not_connected}} = error} ->
+          if attempts > @max_attempts do
+            {:error, error}
+          else
+            query(cluster, sql, params, Keyword.put(opts, :attempts, attempts + 1))
+          end
+
+        {:error, error} ->
+          {:error, error}
       end
     end
 
@@ -175,14 +197,103 @@ if Code.ensure_loaded?(Xandra) do
 
     ## DDL
 
+    alias Ecto.Migration.Table
+
+    defp column_definitions(columns) do
+      columns
+      |> Enum.map(&column_definition/1)
+      |> Enum.join(", ")
+    end
+
+    defp column_definition({:add, name, type, _opts}) do
+      "#{quote_name(name)} #{EctoXandra.xandra_type(type)}"
+    end
+
+    defp key_definitions(columns) do
+      primary_keys =
+        for {_, name, _, opts} <- columns,
+            opts[:primary_key],
+            do: name
+
+      partition_keys =
+        for {_, name, _, opts} <- columns,
+            opts[:partition_key],
+            do: name
+
+      clustering_keys =
+        for {_, name, _, opts} <- columns,
+            opts[:clustering_key],
+            do: name
+
+      case {primary_keys, clustering_keys} do
+        {[], []} ->
+          "PRIMARY KEY ((#{Enum.join(partition_keys, ", ")}))"
+
+        {[], _} ->
+          "PRIMARY KEY ((#{Enum.join(partition_keys, ", ")}), #{Enum.join(clustering_keys, ", ")})"
+
+        _ ->
+          "PRIMARY KEY ((#{Enum.join(primary_keys, ", ")}))"
+      end
+    end
+
+    defp ordering_bys(columns) do
+      ordering_bys =
+        for {_, name, _, opts} <- columns,
+            opts[:clustering_key] && opts[:ordering_by],
+            do: {name, ordering_by(opts[:ordering_by])}
+
+      case ordering_bys do
+        [] ->
+          ""
+
+        _ ->
+          ordering_bys =
+            ordering_bys
+            |> Enum.map(fn {name, order} -> "#{name} #{order}" end)
+            |> Enum.join(", ")
+
+          " WITH CLUSTERING ORDER BY (#{ordering_bys})"
+      end
+    end
+
+    defp ordering_by(:asc), do: "ASC"
+    defp ordering_by(:desc), do: "DESC"
+
     @impl true
-    def execute_ddl(_), do: raise("not implemented")
+    def execute_ddl({command, %Table{} = table, columns})
+        when command in [:create, :create_if_not_exists] do
+      table_structure = column_definitions(columns) <> ", " <> key_definitions(columns)
+      ordering_bys = ordering_bys(columns)
+
+      if command == :create_if_not_exists do
+        "CREATE TABLE IF NOT EXISTS #{quote_table(table.prefix, table.name)} (#{table_structure})" <>
+          ordering_bys
+      else
+        "CREATE TABLE #{quote_table(table.prefix, table.name)} (#{table_structure})" <>
+          ordering_bys
+      end
+    end
+
+    @impl true
+    def execute_ddl({command, %Table{} = table, _mode})
+        when command in [:drop, :drop_if_exists] do
+      if command == :drop_if_exists do
+        "DROP TABLE IF EXISTS #{quote_table(table.prefix, table.name)}"
+      else
+        "DROP TABLE #{quote_table(table.prefix, table.name)}"
+      end
+    end
+
+    @impl true
+    def execute_ddl(string) when is_binary(string), do: [string]
 
     @impl true
     def ddl_logs(_), do: []
 
     @impl true
-    def table_exists_query(_), do: raise("not implemented")
+    def table_exists_query(table),
+      do: "SELECT table_name FROM system_schema.tables WHERE table_name = '#{table}'"
 
     ## Query generation helpers
 
@@ -335,6 +446,10 @@ if Code.ensure_loaded?(Xandra) do
 
     defp paren_expr(expr, sources, query) do
       [expr(expr, sources, query)]
+    end
+
+    defp expr(%Ecto.Query.Tagged{value: value}, sources, query) do
+      expr(value, sources, query)
     end
 
     defp expr({:^, [], [_ix]}, _sources, _query) do

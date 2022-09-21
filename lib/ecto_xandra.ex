@@ -23,6 +23,9 @@ defmodule EctoXandra do
     end
   end
 
+  alias EctoXandra.Types.{List, Set}
+  alias EctoXandra.Types.Map, as: XMap
+
   @behaviour Ecto.Adapter.Storage
   @impl true
   def storage_up(opts) do
@@ -229,7 +232,23 @@ defmodule EctoXandra do
   def supports_ddl_transaction?(), do: false
 
   @impl Ecto.Adapter.Migration
-  def lock_for_migrations(_, _, _), do: raise("not implemented")
+  def lock_for_migrations(_, _, fun), do: fun.()
+
+  # this is to accommodate with schema migration
+  defp prepare_values(Ecto.Migration.SchemaMigration = schema, params) do
+    for source <- Keyword.keys(params) do
+      field = source_field(schema, source)
+      ecto_type = schema.__schema__(:type, field)
+
+      case ecto_type do
+        :integer ->
+          {:bigint |> to_string(), source_value(ecto_type, params[source])}
+
+        _ ->
+          {xandra_type(ecto_type) |> to_string(), source_value(ecto_type, params[source])}
+      end
+    end
+  end
 
   defp prepare_values(schema, params) do
     for source <- Keyword.keys(params) do
@@ -297,6 +316,7 @@ defmodule EctoXandra do
   defp source_value({:parameterized, Ecto.Embedded, _}, value), do: Jason.encode!(value)
   defp source_value(_, {:add, value}), do: value
   defp source_value(_, {:remove, value}), do: value
+  defp source_value(_, %NaiveDateTime{} = value), do: DateTime.from_naive!(value, "Etc/UTC")
   defp source_value(_, value), do: value
 
   def xandra_type(:id), do: :bigint
@@ -305,13 +325,19 @@ defmodule EctoXandra do
   def xandra_type(:string), do: :text
   def xandra_type(:binary), do: :blob
 
-  def xandra_type(t) when t in [:utc_datetime, :utc_datetime_usec], do: :timestamp
+  def xandra_type(t) when t in [:naive_datetime, :utc_datetime, :utc_datetime_usec],
+    do: :timestamp
 
   def xandra_type({:parameterized, Ecto.Embedded, _}), do: :text
 
   def xandra_type({:parameterized, type, opts}) do
     type.type(opts)
   end
+
+  def xandra_type({:list, opts}), do: List.type(opts)
+  def xandra_type({:array, opts}), do: List.type(opts)
+  def xandra_type({:set, opts}), do: Set.type(opts)
+  def xandra_type({:map, opts}), do: XMap.type(opts)
 
   def xandra_type(ecto_type) do
     cond do

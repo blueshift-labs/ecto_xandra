@@ -6,6 +6,10 @@ defmodule EctoXandra.Types.Map do
     do: "map<#{EctoXandra.xandra_type(key_type)}, #{EctoXandra.xandra_type(value_type)}>"
 
   @impl true
+  def type({key_type, value_type}),
+    do: "map<#{EctoXandra.xandra_type(key_type)}, #{EctoXandra.xandra_type(value_type)}>"
+
+  @impl true
   def init(opts) do
     Enum.into(opts, %{})
   end
