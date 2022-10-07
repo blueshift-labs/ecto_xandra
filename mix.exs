@@ -4,8 +4,8 @@ defmodule EctoXandra.MixProject do
   def project do
     [
       app: :ecto_xandra,
-      version: "0.1.17",
-      elixir: "~> 1.13.4",
+      version: "0.1.20",
+      elixir: "~> 1.14",
       start_permanent: Mix.env() == :prod,
       deps: deps()
     ]
@@ -23,7 +23,7 @@ defmodule EctoXandra.MixProject do
       {:ecto, "~> 3.8"},
       {:ecto_sql, "~> 3.8"},
       {:nimble_lz4, "~> 0.1.2"},
-      {:xandra, git: "https://github.com/blueshift-labs/xandra.git", tag: "v0.13.3"},
+      {:xandra, git: "https://github.com/blueshift-labs/xandra.git", tag: "v0.14.0-bsft"},
       {:jason, "~> 1.2"}
     ]
   end
