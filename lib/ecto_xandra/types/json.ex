@@ -10,28 +10,33 @@ defmodule EctoXandra.Types.Json do
   end
 
   @impl true
-  def cast(nil, %{default: default} = opts), do: cast(default, opts)
+  def cast(nil, %{default: default} = opts) when not is_nil(default), do: cast(default, opts)
+  def cast(nil, _opts), do: {:ok, nil}
   def cast(%{} = map, _), do: {:ok, map}
   def cast(list, _) when is_list(list), do: {:ok, list}
   def cast(_other, _), do: :error
 
   @impl true
-  def load(nil, loader, %{default: default} = opts), do: load(default, loader, opts)
+  def load(nil, loader, %{default: default} = opts) when not is_nil(default),
+    do: load(default, loader, opts)
+
+  def load(nil, _, _), do: {:ok, nil}
   def load(%{} = map, _, _), do: {:ok, map}
   def load(list, _, _) when is_list(list), do: {:ok, list}
 
-  def load(string, _, %{default: default}) when is_binary(string) do
+  def load(string, _, opts) when is_binary(string) do
     case Jason.decode(string) do
-      {:ok, nil} -> {:ok, default}
+      {:ok, nil} -> {:ok, Map.get(opts, :default)}
       {:ok, data} -> {:ok, data}
       {:error, _} -> :error
     end
   end
 
-  def load(nil, _, _), do: {:ok, nil}
-
   @impl true
-  def dump(nil, dumper, %{default: default} = opts), do: dump(default, dumper, opts)
+  def dump(nil, dumper, %{default: default} = opts) when not is_nil(default),
+    do: dump(default, dumper, opts)
+
+  def dump(nil, _, _), do: {:ok, nil}
 
   def dump(data, _, _) do
     case Jason.encode(data) do
