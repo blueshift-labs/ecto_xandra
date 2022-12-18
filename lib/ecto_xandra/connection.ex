@@ -8,8 +8,7 @@ if Code.ensure_loaded?(Xandra) do
     @max_attempts 5
     @behaviour Ecto.Adapters.SQL.Connection
     @default_opts [
-      retry_strategy: EctoXandra.DefaultRetryStrategy,
-      decimal_format: :decimal
+      retry_strategy: EctoXandra.DefaultRetryStrategy
     ]
 
     ## Connection
@@ -18,15 +17,6 @@ if Code.ensure_loaded?(Xandra) do
     def child_spec(opts) do
       repo = Keyword.fetch!(opts, :repo)
 
-      {compress, opts} = Keyword.pop(opts, :compress, false)
-
-      opts =
-        if compress do
-          Keyword.put(opts, :compressor, EctoXandra.LZ4Compressor)
-        else
-          opts
-        end
-
       opts =
         if keyspace = Keyword.get(opts, :keyspace) do
           Keyword.put(opts, :after_connect, &Xandra.execute!(&1, "USE #{keyspace}"))
@@ -34,17 +24,7 @@ if Code.ensure_loaded?(Xandra) do
           opts
         end
 
-      case :ets.whereis(:ecto_xandra_opts) do
-        :undefined ->
-          :ets.new(:ecto_xandra_opts, [:named_table, :set, :public])
-
-        _ ->
-          nil
-      end
-
       opts = Keyword.merge(@default_opts, opts)
-
-      :ets.insert(:ecto_xandra_opts, {repo, opts})
 
       Supervisor.child_spec({Xandra.Cluster, opts}, id: repo)
     end

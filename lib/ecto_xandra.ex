@@ -26,6 +26,11 @@ defmodule EctoXandra do
   alias EctoXandra.Types.{List, Set}
   alias EctoXandra.Types.Map, as: XMap
 
+  @default_opts [
+    decimal_format: :decimal,
+    uuid_format: :binary
+  ]
+
   @behaviour Ecto.Adapter.Storage
   @impl true
   def storage_up(opts) do
@@ -134,9 +139,10 @@ defmodule EctoXandra do
         returning,
         opts
       ) do
-    opts = put_source(opts, source)
-
-    [{^repo, repo_opts}] = :ets.lookup(:ecto_xandra_opts, repo)
+    opts =
+      opts
+      |> put_source(source)
+      |> Keyword.merge(@default_opts)
 
     {fields, _} = :lists.unzip(params)
     sql = @conn.insert(prefix, source, fields, [fields], on_conflict, returning, opts)
@@ -152,7 +158,7 @@ defmodule EctoXandra do
       values ++ conflict_params,
       kind,
       returning,
-      Keyword.merge(repo_opts, opts)
+      opts
     )
   end
 
@@ -165,9 +171,10 @@ defmodule EctoXandra do
         returning,
         opts
       ) do
-    opts = put_source(opts, source)
-
-    [{^repo, repo_opts}] = :ets.lookup(:ecto_xandra_opts, repo)
+    opts =
+      opts
+      |> put_source(source)
+      |> Keyword.merge(@default_opts)
 
     sql = @conn.update(prefix, source, fields, params, returning)
     values = prepare_values(schema, fields ++ params)
@@ -182,7 +189,7 @@ defmodule EctoXandra do
       values,
       :raise,
       returning,
-      Keyword.merge(repo_opts, opts)
+      opts
     )
   end
 
@@ -193,9 +200,10 @@ defmodule EctoXandra do
         params,
         opts
       ) do
-    opts = put_source(opts, source)
-
-    [{^repo, repo_opts}] = :ets.lookup(:ecto_xandra_opts, repo)
+    opts =
+      opts
+      |> put_source(source)
+      |> Keyword.merge(@default_opts)
 
     sql = @conn.delete(prefix, source, params, [])
     values = prepare_values(schema, params)
@@ -210,13 +218,23 @@ defmodule EctoXandra do
       values,
       :raise,
       [],
-      Keyword.merge(repo_opts, opts)
+      opts
     )
   end
 
   @impl Ecto.Adapter.Queryable
   def execute(%{repo: repo} = adapter_meta, query_meta, query, params, opts) do
-    [{^repo, repo_opts}] = :ets.lookup(:ecto_xandra_opts, repo)
+    opts =
+      case query_meta do
+        %{sources: {{source, _, _}}} ->
+          opts
+          |> put_source(source)
+          |> Keyword.merge(@default_opts)
+
+        _ ->
+          opts
+          |> Keyword.merge(@default_opts)
+      end
 
     Ecto.Adapters.SQL.execute(
       :named,
@@ -224,7 +242,7 @@ defmodule EctoXandra do
       query_meta,
       query,
       params,
-      Keyword.merge(repo_opts, opts ++ [uuid_format: :binary])
+      opts
     )
   end
 
