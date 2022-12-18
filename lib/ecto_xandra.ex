@@ -216,16 +216,26 @@ defmodule EctoXandra do
 
   @impl Ecto.Adapter.Queryable
   def execute(%{repo: repo} = adapter_meta, query_meta, query, params, opts) do
-    [{^repo, repo_opts}] = :ets.lookup(:ecto_xandra_opts, repo)
+    case :ets.lookup(:ecto_xandra_opts, repo) do
+      [{^repo, repo_opts}] ->
+        Ecto.Adapters.SQL.execute(
+          :named,
+          adapter_meta,
+          query_meta,
+          query,
+          params,
+          Keyword.merge(repo_opts, opts ++ [uuid_format: :binary])
+        )
 
-    Ecto.Adapters.SQL.execute(
-      :named,
-      adapter_meta,
-      query_meta,
-      query,
-      params,
-      Keyword.merge(repo_opts, opts ++ [uuid_format: :binary])
-    )
+      [] ->
+        # debug
+        Rollbax.report_message(:debug, "checking repo", %{
+          go_uts: Ecto.Repo.Registry.lookup(UTX.GoUTSRepo),
+          uts_c1: Ecto.Repo.Registry.lookup(UTX.UTSRepoC1),
+          uts_c2: Ecto.Repo.Registry.lookup(UTX.UTSRepoC2),
+          ecto_xandra_opts: :ets.tab2list(:ecto_xandra_opts)
+        })
+    end
   end
 
   @impl Ecto.Adapter.Migration

@@ -19,6 +19,7 @@ defmodule EctoXandra.MixProject do
 
   defp deps do
     [
+      {:rollbax, "~> 0.11"},
       {:timex, "~> 3.7"},
       {:ecto, "~> 3.9"},
       {:ecto_sql, "~> 3.9"},
