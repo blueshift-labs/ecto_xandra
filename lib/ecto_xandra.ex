@@ -132,7 +132,7 @@ defmodule EctoXandra do
 
   @impl Ecto.Adapter.Schema
   def insert(
-        %{repo: repo} = adapter_meta,
+        adapter_meta,
         %{source: source, prefix: prefix, schema: schema},
         params,
         {kind, conflict_params, _} = on_conflict,
@@ -164,7 +164,7 @@ defmodule EctoXandra do
 
   @impl Ecto.Adapter.Schema
   def update(
-        %{repo: repo} = adapter_meta,
+        adapter_meta,
         %{source: source, prefix: prefix, schema: schema},
         fields,
         params,
@@ -195,7 +195,7 @@ defmodule EctoXandra do
 
   @impl Ecto.Adapter.Schema
   def delete(
-        %{repo: repo} = adapter_meta,
+        adapter_meta,
         %{source: source, prefix: prefix, schema: schema},
         params,
         opts
@@ -223,7 +223,7 @@ defmodule EctoXandra do
   end
 
   @impl Ecto.Adapter.Queryable
-  def execute(%{repo: repo} = adapter_meta, query_meta, query, params, opts) do
+  def execute(adapter_meta, query_meta, query, params, opts) do
     opts =
       case query_meta do
         %{sources: {{source, _, _}}} ->
