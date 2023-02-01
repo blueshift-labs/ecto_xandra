@@ -15,6 +15,7 @@ defmodule EctoXandra.Types.Timestamp do
   def cast(input) when is_binary(input) do
     case Timex.parse(input, "{RFC3339}") do
       {:ok, %DateTime{} = t} -> {:ok, t}
+      {:ok, %NaiveDateTime{} = t} -> {:ok, Timex.to_datetime(t)}
       {:error, _} -> :error
     end
   end
