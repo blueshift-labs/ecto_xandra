@@ -5,10 +5,9 @@ if Code.ensure_loaded?(Xandra) do
     alias Xandra.Prepared
     alias Ecto.Query.{BooleanExpr, QueryExpr}
 
-    @max_attempts 5
     @behaviour Ecto.Adapters.SQL.Connection
     @default_opts [
-      retry_strategy: EctoXandra.DefaultRetryStrategy
+      retry_strategy: EctoXandra.ExponentialBackoffRetryStrategy
     ]
 
     ## Connection
@@ -23,8 +22,6 @@ if Code.ensure_loaded?(Xandra) do
         else
           opts
         end
-
-      opts = Keyword.merge(@default_opts, opts)
 
       Supervisor.child_spec({Xandra.Cluster, opts}, id: repo)
     end
@@ -41,51 +38,54 @@ if Code.ensure_loaded?(Xandra) do
     end
 
     defp do_prepare(conn, sql) when is_binary(sql) do
-      Xandra.prepare(conn, sql)
+      Xandra.prepare(conn, sql) 
     end
 
+    # All the select queries are coming through this function and it makes sense to
+    # use prepared query for selects (selects in Cassandra has a simple format, fields don't change much)
+    # thus we must use Xandra.Cluster.run/3
+    # Therefore, our retry_strategy has to be applied cluster-wise, instead of only retrying on the same node.
+    # This is aligned with Xandra.Cluster.execute/4 used below in query/4, where Xandra.Cluster.execute/4 also
+    # applies retry_strategy cluster-wise
     defp do_exec(cluster, sql, params, opts) do
-      Xandra.Cluster.run(cluster, fn conn ->
-        case do_prepare(conn, sql) do
-          {:ok, %Prepared{} = prepared} ->
-            try do
-              stream = Xandra.stream_pages!(conn, prepared, params, opts)
+      Xandra.RetryStrategy.run_with_retrying(opts, fn ->
+        Xandra.Cluster.run(cluster, fn conn ->
+          case do_prepare(conn, sql) do
+            {:ok, %Prepared{} = prepared} ->
+              try do
+                stream = Xandra.stream_pages!(conn, prepared, params, opts)
 
-              result =
-                Enum.reduce_while(stream, %{rows: [], num_rows: 0}, fn
-                  %Xandra.Void{}, _acc ->
-                    {:halt, %{rows: nil, num_rows: 1}}
+                result =
+                  Enum.reduce_while(stream, %{rows: [], num_rows: 0}, fn
+                    %Xandra.Void{}, _acc ->
+                      {:halt, %{rows: nil, num_rows: 1}}
 
-                  %Xandra.SchemaChange{}, _acc ->
-                    {:halt, %{rows: nil, num_rows: 1}}
+                    %Xandra.SchemaChange{}, _acc ->
+                      {:halt, %{rows: nil, num_rows: 1}}
 
-                  %Xandra.Page{} = page, %{rows: rows, num_rows: num_rows} ->
-                    %{rows: new_rows, num_rows: new_num_rows} = process_page(page)
-                    {:cont, %{rows: rows ++ new_rows, num_rows: num_rows + new_num_rows}}
-                end)
+                    %Xandra.Page{} = page, %{rows: rows, num_rows: num_rows} ->
+                      %{rows: new_rows, num_rows: new_num_rows} = process_page(page)
+                      {:cont, %{rows: rows ++ new_rows, num_rows: num_rows + new_num_rows}}
+                  end)
 
-              {:ok, prepared, result}
-            rescue
-              err ->
-                {:error, err}
-            end
+                {:ok, prepared, result}
+              rescue
+                err ->
+                  {:error, err}
+              end
 
-          {:error, error} ->
-            {:error, error}
-        end
+            {:error, error} ->
+              {:error, error}
+          end
+        end)
       end)
     end
 
     @impl true
     def query(cluster, sql, params, opts) do
-      attempts = Keyword.get(opts, :attempts, 0)
-
-      if attempts > 0 do
-        Process.sleep(2 ** attempts * 100)
-      end
+      opts = Keyword.merge(@default_opts, opts)
 
       result = Xandra.Cluster.execute(cluster, sql, params, opts)
-
       case result do
         {:ok, %Xandra.Void{}} ->
           {:ok, %{rows: nil, num_rows: 1}}
@@ -95,13 +95,6 @@ if Code.ensure_loaded?(Xandra) do
 
         {:ok, %Xandra.SchemaChange{} = schema_change} ->
           {:ok, schema_change}
-
-        {:error, %Xandra.ConnectionError{reason: {:cluster, :not_connected}} = error} ->
-          if attempts > @max_attempts do
-            {:error, error}
-          else
-            query(cluster, sql, params, Keyword.put(opts, :attempts, attempts + 1))
-          end
 
         {:error, error} ->
           {:error, error}
