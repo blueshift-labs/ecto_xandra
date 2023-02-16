@@ -6,9 +6,6 @@ if Code.ensure_loaded?(Xandra) do
     alias Ecto.Query.{BooleanExpr, QueryExpr}
 
     @behaviour Ecto.Adapters.SQL.Connection
-    @default_opts [
-      retry_strategy: EctoXandra.ExponentialBackoffRetryStrategy
-    ]
 
     ## Connection
 
@@ -33,59 +30,64 @@ if Code.ensure_loaded?(Xandra) do
       do_exec(cluster, sql, params, opts)
     end
 
-    defp do_prepare(_conn, %Prepared{} = sql) do
+    defp do_prepare(_conn, %Prepared{} = sql, _opts) do
       {:ok, sql}
     end
 
-    defp do_prepare(conn, sql) when is_binary(sql) do
-      Xandra.prepare(conn, sql) 
+    defp do_prepare(conn, sql, opts) when is_binary(sql) do
+      Xandra.prepare(conn, sql, opts)
     end
 
-    # All the select queries are coming through this function and it makes sense to
-    # use prepared query for selects (selects in Cassandra has a simple format, fields don't change much)
-    # thus we must use Xandra.Cluster.run/3
-    # Therefore, our retry_strategy has to be applied cluster-wise, instead of only retrying on the same node.
-    # This is aligned with Xandra.Cluster.execute/4 used below in query/4, where Xandra.Cluster.execute/4 also
-    # applies retry_strategy cluster-wise
     defp do_exec(cluster, sql, params, opts) do
-      Xandra.RetryStrategy.run_with_retrying(opts, fn ->
-        Xandra.Cluster.run(cluster, fn conn ->
-          case do_prepare(conn, sql) do
-            {:ok, %Prepared{} = prepared} ->
-              try do
-                stream = Xandra.stream_pages!(conn, prepared, params, opts)
+      %{cluster_name: cluster_name, options: cluster_opts} = Xandra.Clusters.Cluster.info(cluster)
 
-                result =
-                  Enum.reduce_while(stream, %{rows: [], num_rows: 0}, fn
-                    %Xandra.Void{}, _acc ->
-                      {:halt, %{rows: nil, num_rows: 1}}
+      opts =
+        cluster_opts
+        |> Keyword.merge(opts)
+        |> Keyword.put(:cluster_name, cluster_name)
 
-                    %Xandra.SchemaChange{}, _acc ->
-                      {:halt, %{rows: nil, num_rows: 1}}
+      Xandra.Cluster.run(cluster, opts, fn conn ->
+        case do_prepare(conn, sql, opts) do
+          {:ok, %Prepared{} = prepared} ->
+            try do
+              stream = Xandra.stream_pages!(conn, prepared, params, opts)
 
-                    %Xandra.Page{} = page, %{rows: rows, num_rows: num_rows} ->
-                      %{rows: new_rows, num_rows: new_num_rows} = process_page(page)
-                      {:cont, %{rows: rows ++ new_rows, num_rows: num_rows + new_num_rows}}
-                  end)
+              result =
+                Enum.reduce_while(stream, %{rows: [], num_rows: 0}, fn
+                  %Xandra.Void{}, _acc ->
+                    {:halt, %{rows: nil, num_rows: 1}}
 
-                {:ok, prepared, result}
-              rescue
-                err ->
-                  {:error, err}
-              end
+                  %Xandra.SchemaChange{}, _acc ->
+                    {:halt, %{rows: nil, num_rows: 1}}
 
-            {:error, error} ->
-              {:error, error}
-          end
-        end)
+                  %Xandra.Page{} = page, %{rows: rows, num_rows: num_rows} ->
+                    %{rows: new_rows, num_rows: new_num_rows} = process_page(page)
+                    {:cont, %{rows: rows ++ new_rows, num_rows: num_rows + new_num_rows}}
+                end)
+
+              {:ok, prepared, result}
+            rescue
+              err ->
+                {:error, err}
+            end
+
+          {:error, error} ->
+            {:error, error}
+        end
       end)
     end
 
     @impl true
     def query(cluster, sql, params, opts) do
-      opts = Keyword.merge(@default_opts, opts)
+      %{cluster_name: cluster_name, options: cluster_opts} = Xandra.Clusters.Cluster.info(cluster)
+
+      opts =
+        cluster_opts
+        |> Keyword.merge(opts)
+        |> Keyword.put(:cluster_name, cluster_name)
 
       result = Xandra.Cluster.execute(cluster, sql, params, opts)
+
       case result do
         {:ok, %Xandra.Void{}} ->
           {:ok, %{rows: nil, num_rows: 1}}
