@@ -139,14 +139,17 @@ defmodule EctoXandra do
         returning,
         opts
       ) do
+    {fields, _} = :lists.unzip(params)
+    sql = @conn.insert(prefix, source, fields, [fields], on_conflict, returning, opts)
+    prepared_values = prepare_values(schema, params)
+    {_, values} = Enum.unzip(prepared_values)
+
     opts =
       opts
       |> put_source(source)
       |> Keyword.merge(@default_opts)
-
-    {fields, _} = :lists.unzip(params)
-    sql = @conn.insert(prefix, source, fields, [fields], on_conflict, returning, opts)
-    values = prepare_values(schema, params)
+      |> Keyword.put(:query, sql)
+      |> Keyword.put(:params, prepared_values)
 
     Ecto.Adapters.SQL.struct(
       adapter_meta,
@@ -171,13 +174,16 @@ defmodule EctoXandra do
         returning,
         opts
       ) do
+    sql = @conn.update(prefix, source, fields, params, returning)
+    prepared_values = prepare_values(schema, fields ++ params)
+    {_, values} = Enum.unzip(prepared_values)
+
     opts =
       opts
       |> put_source(source)
       |> Keyword.merge(@default_opts)
-
-    sql = @conn.update(prefix, source, fields, params, returning)
-    values = prepare_values(schema, fields ++ params)
+      |> Keyword.put(:query, sql)
+      |> Keyword.put(:params, prepared_values)
 
     Ecto.Adapters.SQL.struct(
       adapter_meta,
@@ -200,13 +206,16 @@ defmodule EctoXandra do
         params,
         opts
       ) do
+    sql = @conn.delete(prefix, source, params, [])
+    prepared_values = prepare_values(schema, params)
+    {_, values} = Enum.unzip(prepared_values)
+
     opts =
       opts
       |> put_source(source)
       |> Keyword.merge(@default_opts)
-
-    sql = @conn.delete(prefix, source, params, [])
-    values = prepare_values(schema, params)
+      |> Keyword.put(:query, sql)
+      |> Keyword.put(:params, prepared_values)
 
     Ecto.Adapters.SQL.struct(
       adapter_meta,
@@ -260,10 +269,11 @@ defmodule EctoXandra do
 
       case ecto_type do
         :integer ->
-          {:bigint |> to_string(), source_value(ecto_type, params[source])}
+          {source, {:bigint |> to_string(), source_value(ecto_type, params[source])}}
 
         _ ->
-          {xandra_type(ecto_type) |> to_string(), source_value(ecto_type, params[source])}
+          {source,
+           {xandra_type(ecto_type) |> to_string(), source_value(ecto_type, params[source])}}
       end
     end
   end
@@ -272,7 +282,7 @@ defmodule EctoXandra do
     for source <- Keyword.keys(params) do
       field = source_field(schema, source)
       ecto_type = schema.__schema__(:type, field)
-      {xandra_type(ecto_type) |> to_string(), source_value(ecto_type, params[source])}
+      {source, {xandra_type(ecto_type) |> to_string(), source_value(ecto_type, params[source])}}
     end
   end
 

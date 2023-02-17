@@ -27,65 +27,13 @@ if Code.ensure_loaded?(Xandra) do
 
     @impl true
     def prepare_execute(cluster, _name, sql, params, opts) do
-      do_exec(cluster, sql, params, opts)
-    end
-
-    defp do_prepare(_conn, %Prepared{} = sql, _opts) do
-      {:ok, sql}
-    end
-
-    defp do_prepare(conn, sql, opts) when is_binary(sql) do
-      Xandra.prepare(conn, sql, opts)
-    end
-
-    defp do_exec(cluster, sql, params, opts) do
-      %{cluster_name: cluster_name, options: cluster_opts} = Xandra.Clusters.Cluster.info(cluster)
-
-      opts =
-        cluster_opts
-        |> Keyword.merge(opts)
-        |> Keyword.put(:cluster_name, cluster_name)
-
-      Xandra.Cluster.run(cluster, opts, fn conn ->
-        case do_prepare(conn, sql, opts) do
-          {:ok, %Prepared{} = prepared} ->
-            try do
-              stream = Xandra.stream_pages!(conn, prepared, params, opts)
-
-              result =
-                Enum.reduce_while(stream, %{rows: [], num_rows: 0}, fn
-                  %Xandra.Void{}, _acc ->
-                    {:halt, %{rows: nil, num_rows: 1}}
-
-                  %Xandra.SchemaChange{}, _acc ->
-                    {:halt, %{rows: nil, num_rows: 1}}
-
-                  %Xandra.Page{} = page, %{rows: rows, num_rows: num_rows} ->
-                    %{rows: new_rows, num_rows: new_num_rows} = process_page(page)
-                    {:cont, %{rows: rows ++ new_rows, num_rows: num_rows + new_num_rows}}
-                end)
-
-              {:ok, prepared, result}
-            rescue
-              err ->
-                {:error, err}
-            end
-
-          {:error, error} ->
-            {:error, error}
-        end
-      end)
+      with {:ok, %Prepared{} = prepared} <- Xandra.Cluster.prepare(cluster, sql, opts) do
+        execute(cluster, prepared, params, opts)
+      end
     end
 
     @impl true
     def query(cluster, sql, params, opts) do
-      %{cluster_name: cluster_name, options: cluster_opts} = Xandra.Clusters.Cluster.info(cluster)
-
-      opts =
-        cluster_opts
-        |> Keyword.merge(opts)
-        |> Keyword.put(:cluster_name, cluster_name)
-
       result = Xandra.Cluster.execute(cluster, sql, params, opts)
 
       case result do
@@ -110,10 +58,26 @@ if Code.ensure_loaded?(Xandra) do
 
     @impl true
     def execute(cluster, query, params, opts) do
-      do_exec(cluster, query, params, opts)
-      |> case do
-        {:error, err} -> {:error, err}
-        {:ok, _prepared, result} -> {:ok, result}
+      try do
+        stream = Xandra.Cluster.stream_pages!(cluster, query, params, opts)
+
+        result =
+          Enum.reduce_while(stream, %{rows: [], num_rows: 0}, fn
+            %Xandra.Void{}, _acc ->
+              {:halt, %{rows: nil, num_rows: 1}}
+
+            %Xandra.SchemaChange{}, _acc ->
+              {:halt, %{rows: nil, num_rows: 1}}
+
+            %Xandra.Page{} = page, %{rows: rows, num_rows: num_rows} ->
+              %{rows: new_rows, num_rows: new_num_rows} = process_page(page)
+              {:cont, %{rows: rows ++ new_rows, num_rows: num_rows + new_num_rows}}
+          end)
+
+        {:ok, query, result}
+      rescue
+        err ->
+          {:error, err}
       end
     end
 
