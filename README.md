@@ -7,7 +7,7 @@ This adapter uses Xandra.Cluster for all the operations and connection pooling.
 
 A couple of custom data types are introduced to work with Cassandra composite data types: `Json`, `Map`, `List`, `Set`, `Timestamp`.
 
-`EctoXandra.DefaultRetryStrategy` is used if not otherwise specified.
+`Xandra.RetryStrategy.ExponentialBackoff` is used if not otherwise specified.
 
 ## Installation
 
