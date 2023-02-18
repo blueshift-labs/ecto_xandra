@@ -232,17 +232,33 @@ defmodule EctoXandra do
   end
 
   @impl Ecto.Adapter.Queryable
-  def execute(adapter_meta, query_meta, query, params, opts) do
+  def execute(adapter_meta, query_meta, {:nocache, {_id, sql}} = query, params, opts) do
+    execute(adapter_meta, query_meta, query, sql, params, opts)
+  end
+
+  def execute(adapter_meta, query_meta, {:cache, _, {_id, sql}} = query, params, opts) do
+    execute(adapter_meta, query_meta, query, sql, params, opts)
+  end
+
+  def execute(adapter_meta, query_meta, {:cached, _, _, {_id, sql}} = query, params, opts) do
+    execute(adapter_meta, query_meta, query, sql, params, opts)
+  end
+
+  defp execute(adapter_meta, query_meta, query, sql, params, opts) do
     opts =
       case query_meta do
         %{sources: {{source, _, _}}} ->
           opts
           |> put_source(source)
           |> Keyword.merge(@default_opts)
+          |> Keyword.put(:query, sql)
+          |> Keyword.put(:params, params)
 
         _ ->
           opts
           |> Keyword.merge(@default_opts)
+          |> Keyword.put(:query, sql)
+          |> Keyword.put(:params, params)
       end
 
     Ecto.Adapters.SQL.execute(
