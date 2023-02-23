@@ -23,7 +23,7 @@ defmodule EctoXandra.MixProject do
       {:ecto, "~> 3.9"},
       {:ecto_sql, "~> 3.9"},
       {:nimble_lz4, "~> 0.1.2"},
-      {:xandra, git: "https://github.com/blueshift-labs/xandra.git", tag: "v0.14.0-bsft-11"},
+      {:xandra, git: "https://github.com/blueshift-labs/xandra.git", tag: "v0.14.0-bsft-12"},
       {:jason, "~> 1.2"}
     ]
   end
