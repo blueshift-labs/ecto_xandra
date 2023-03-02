@@ -38,6 +38,16 @@ defmodule EctoXandra do
 
     Application.ensure_all_started(:xandra)
 
+    address = Keyword.get(opts, :address)
+    port = Keyword.get(opts, :port)
+
+    opts =
+      if address && port do
+        Keyword.put_new(opts, :nodes, ["#{address}:#{port}"])
+      else
+        opts
+      end
+
     {:ok, conn} =
       Xandra.start_link(Keyword.take(opts, [:nodes, :protocol_version, :log, :timeout]))
 
@@ -60,6 +70,16 @@ defmodule EctoXandra do
 
     Application.ensure_all_started(:xandra)
 
+    address = Keyword.get(opts, :address)
+    port = Keyword.get(opts, :port)
+
+    opts =
+      if address && port do
+        Keyword.put_new(opts, :nodes, ["#{address}:#{port}"])
+      else
+        opts
+      end
+
     {:ok, conn} =
       Xandra.start_link(Keyword.take(opts, [:nodes, :protocol_version, :log, :timeout]))
 
@@ -79,6 +99,16 @@ defmodule EctoXandra do
     keyspace = Keyword.fetch!(opts, :keyspace)
 
     Application.ensure_all_started(:xandra)
+
+    address = Keyword.get(opts, :address)
+    port = Keyword.get(opts, :port)
+
+    opts =
+      if address && port do
+        Keyword.put_new(opts, :nodes, ["#{address}:#{port}"])
+      else
+        opts
+      end
 
     {:ok, conn} =
       Xandra.start_link(Keyword.take(opts, [:nodes, :protocol_version, :log, :timeout]))
