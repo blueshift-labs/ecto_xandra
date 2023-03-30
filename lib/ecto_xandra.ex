@@ -34,12 +34,14 @@ defmodule EctoXandra do
   @behaviour Ecto.Adapter.Storage
   @impl true
   def storage_up(opts) do
+    IO.puts "**************************************************"
+
     keyspace = Keyword.fetch!(opts, :keyspace)
 
-    Application.ensure_all_started(:xandra)
+    Application.ensure_all_started(:xandra) |> IO.inspect()
 
     {:ok, conn} =
-      Xandra.start_link(Keyword.take(opts, [:nodes, :protocol_version, :log, :timeout]))
+      Xandra.start_link(Keyword.take(opts, [:nodes, :protocol_version, :log, :timeout])) |> IO.inspect()
 
     stmt = """
     CREATE KEYSPACE IF NOT EXISTS #{keyspace}
@@ -47,7 +49,7 @@ defmodule EctoXandra do
     AND durable_writes = true;
     """
 
-    case Xandra.execute(conn, stmt) do
+    case Xandra.execute(conn, stmt) |> IO.inspect() do
       {:ok, %Xandra.SchemaChange{effect: "CREATED"}} -> :ok
       {:ok, %Xandra.Void{}} -> {:error, :already_up}
       err -> err
