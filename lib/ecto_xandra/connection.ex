@@ -148,6 +148,31 @@ if Code.ensure_loaded?(Xandra) do
       "#{quote_name(name)} #{EctoXandra.xandra_type(type)}"
     end
 
+    defp column_definition({:remove, name}) do
+      "#{quote_name(name)}"
+    end
+
+    defp column_operations(columns) do
+      {add, remove} =
+        Enum.reduce(columns, {[], []}, fn
+          {:add, _name, _type, _opts} = column, {add, remove} -> {[column | add], remove}
+          {:remove, _name} = column, {add, remove} -> {add, [column | remove]}
+        end)
+
+      [
+        column_operations(:add, add),
+        column_operations(:remove, remove)
+      ]
+    end
+
+    defp column_operations(:add, columns) do
+      "ADD (#{column_definitions(columns)})"
+    end
+
+    defp column_operations(:remove, columns) do
+      "DROP (#{column_definitions(columns)})"
+    end
+
     defp key_definitions(columns) do
       primary_keys =
         for {_, name, _, opts} <- columns,
@@ -222,6 +247,14 @@ if Code.ensure_loaded?(Xandra) do
       else
         "DROP TABLE #{quote_table(table.prefix, table.name)}"
       end
+    end
+
+    @impl true
+    def execute_ddl({:alter, %Table{} = table, columns}) do
+      columns =
+        columns
+        |> column_operations()
+        |> Enum.map(&"ALTER TABLE #{quote_table(table.prefix, table.name)} #{&1}")
     end
 
     @impl true
