@@ -163,7 +163,11 @@ if Code.ensure_loaded?(Xandra) do
         column_operations(:add, add),
         column_operations(:remove, remove)
       ]
+      |> Enum.reject(&is_nil/1)
+      |> List.flatten()
     end
+
+    defp column_operations(_op, []), do: nil
 
     defp column_operations(:add, columns) do
       "ADD (#{column_definitions(columns)})"
