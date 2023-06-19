@@ -14,13 +14,18 @@ defmodule EctoXandra.Types.Timestamp do
 
   def cast(input) when is_binary(input) do
     case Timex.parse(input, "{RFC3339}") do
-      {:ok, %DateTime{} = t} -> {:ok, t}
-      {:ok, %NaiveDateTime{} = t} -> {:ok, Timex.to_datetime(t)}
-      {:error, _} -> :error
+      {:ok, %DateTime{} = t} ->
+        {:ok, DateTime.truncate(t, :millisecond)}
+
+      {:ok, %NaiveDateTime{} = t} ->
+        {:ok, Timex.to_datetime(t) |> DateTime.truncate(:millisecond)}
+
+      {:error, _} ->
+        :error
     end
   end
 
-  def cast(%DateTime{} = t), do: {:ok, t}
+  def cast(%DateTime{} = t), do: {:ok, DateTime.truncate(t, :millisecond)}
 
   def cast(dt) do
     case Timex.to_datetime(dt) do
@@ -31,12 +36,12 @@ defmodule EctoXandra.Types.Timestamp do
 
   @impl true
   def load(nil), do: {:ok, nil}
-  def load(%DateTime{} = t), do: {:ok, t}
+  def load(%DateTime{} = t), do: {:ok, DateTime.truncate(t, :millisecond)}
   def load(_), do: :error
 
   @impl true
   def dump(nil), do: {:ok, nil}
-  def dump(%DateTime{} = t), do: {:ok, t}
+  def dump(%DateTime{} = t), do: {:ok, DateTime.truncate(t, :millisecond)}
   def dump(_), do: :error
 
   @impl true
