@@ -20,10 +20,10 @@ defmodule EctoXandra.MixProject do
   defp deps do
     [
       {:timex, "~> 3.7"},
-      {:ecto, "~> 3.9"},
-      {:ecto_sql, "~> 3.9"},
+      {:ecto, "~> 3.10"},
+      {:ecto_sql, "~> 3.10"},
       {:nimble_lz4, "~> 0.1.2"},
-      {:xandra, git: "https://github.com/blueshift-labs/xandra.git", tag: "v0.14.0-bsft-24"},
+      {:xandra, git: "https://github.com/blueshift-labs/xandra.git", tag: "v0.14.0-bsft-25"},
       {:jason, "~> 1.2"}
     ]
   end
