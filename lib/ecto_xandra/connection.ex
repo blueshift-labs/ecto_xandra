@@ -3,7 +3,7 @@ if Code.ensure_loaded?(Xandra) do
     @moduledoc false
 
     alias Xandra.Prepared
-    alias Ecto.Query.{BooleanExpr, QueryExpr}
+    alias Ecto.Query.{BooleanExpr, QueryExpr, LimitExpr}
 
     @behaviour Ecto.Adapters.SQL.Connection
 
@@ -396,7 +396,7 @@ if Code.ensure_loaded?(Xandra) do
 
     defp limit(%{limit: nil}, _sources), do: []
 
-    defp limit(%{limit: %QueryExpr{expr: expr}} = query, sources) do
+    defp limit(%{limit: %LimitExpr{expr: expr}} = query, sources) do
       [" LIMIT " | expr(expr, sources, query)]
     end
 
