@@ -234,9 +234,10 @@ defmodule EctoXandra do
         adapter_meta,
         %{source: source, prefix: prefix, schema: schema},
         params,
+        returning,
         opts
       ) do
-    sql = @conn.delete(prefix, source, params, [])
+    sql = @conn.delete(prefix, source, params, returning)
     prepared_values = prepare_values(schema, params)
     {_, values} = Enum.unzip(prepared_values)
 
@@ -256,7 +257,7 @@ defmodule EctoXandra do
       params,
       values,
       :raise,
-      [],
+      returning,
       opts
     )
   end
