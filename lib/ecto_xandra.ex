@@ -204,7 +204,7 @@ defmodule EctoXandra do
         returning,
         opts
       ) do
-    sql = @conn.update(prefix, source, fields, params, returning)
+    sql = @conn.update(prefix, source, fields, params, returning, opts)
     prepared_values = prepare_values(schema, fields ++ params)
     {_, values} = Enum.unzip(prepared_values)
 
