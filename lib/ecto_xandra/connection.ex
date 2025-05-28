@@ -115,7 +115,7 @@ if Code.ensure_loaded?(Xandra) do
 
     @impl true
     def update(prefix, table, fields, filters, _returning) do
-      "UPDATE #{quote_table(prefix, table)} SET #{set(fields)} WHERE #{where(filters)}"
+      "UPDATE #{quote_table(prefix, table)} SET #{set(fields)} WHERE #{where(filters)} #{insert_suffix(opts)}"
     end
 
     @impl true
@@ -313,6 +313,15 @@ if Code.ensure_loaded?(Xandra) do
 
           _ ->
             [" IF NOT EXISTS"]
+        end
+
+      suffix =
+        case Keyword.get(opts, :if_exists, false) do
+          true ->
+             [" IF EXISTS"]
+
+          _ ->
+            []
         end
 
       suffix =
