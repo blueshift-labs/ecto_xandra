@@ -114,7 +114,7 @@ if Code.ensure_loaded?(Xandra) do
     end
 
     @impl true
-    def update(prefix, table, fields, filters, _returning) do
+    def update(prefix, table, fields, filters, _returning, opts) do
       "UPDATE #{quote_table(prefix, table)} SET #{set(fields)} WHERE #{where(filters)} #{insert_suffix(opts)}"
     end
 
