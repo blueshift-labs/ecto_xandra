@@ -49,7 +49,7 @@ defmodule EctoXandra do
       end
 
     {:ok, conn} =
-      Xandra.start_link(Keyword.take(opts, [:nodes, :protocol_version, :log, :timeout]))
+      Xandra.start_link(Keyword.take(opts, [:nodes, :protocol_version]))
 
     stmt = """
     CREATE KEYSPACE IF NOT EXISTS #{keyspace}
@@ -81,7 +81,7 @@ defmodule EctoXandra do
       end
 
     {:ok, conn} =
-      Xandra.start_link(Keyword.take(opts, [:nodes, :protocol_version, :log, :timeout]))
+      Xandra.start_link(Keyword.take(opts, [:nodes, :protocol_version]))
 
     stmt = """
     DROP KEYSPACE IF EXISTS #{keyspace};
@@ -111,7 +111,7 @@ defmodule EctoXandra do
       end
 
     {:ok, conn} =
-      Xandra.start_link(Keyword.take(opts, [:nodes, :protocol_version, :log, :timeout]))
+      Xandra.start_link(Keyword.take(opts, [:nodes, :protocol_version]))
 
     stmt = """
     USE #{keyspace};
