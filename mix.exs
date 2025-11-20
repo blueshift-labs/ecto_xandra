@@ -23,7 +23,9 @@ defmodule EctoXandra.MixProject do
       {:ecto, "~> 3.11"},
       {:ecto_sql, "~> 3.11"},
       {:nimble_lz4, "~> 0.1.2", optional: true},
-      {:xandra, git: "https://github.com/blueshift-labs/xandra.git", ref: "9a3cd6e944b19d428192d531c7bb4ec7e498be63"},
+      {:xandra,
+       git: "https://github.com/blueshift-labs/xandra.git",
+       ref: "9a3cd6e944b19d428192d531c7bb4ec7e498be63"},
       {:jason, "~> 1.2"}
     ]
   end

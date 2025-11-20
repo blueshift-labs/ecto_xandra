@@ -40,7 +40,7 @@ if Code.ensure_loaded?(Xandra) do
         {:ok, %Xandra.Void{}} ->
           {:ok, %{rows: nil, num_rows: 1}}
 
-        {:ok, %Xandra.Page{} = page} ->
+        {:ok, %Xandra.Page{paging_state: nil} = page} ->
           {:ok, process_page(page)}
 
         {:ok, %Xandra.SchemaChange{} = schema_change} ->
@@ -63,7 +63,7 @@ if Code.ensure_loaded?(Xandra) do
           {:ok, %Xandra.Void{}} ->
             {:ok, query, %{rows: nil, num_rows: 1}}
 
-          {:ok, %Xandra.Page{paging_state: nil} = page} ->
+          {:ok, %Xandra.Page{} = page} ->
             {:ok, query, process_page(page)}
 
           {:ok, %Xandra.SchemaChange{} = schema_change} ->
@@ -425,7 +425,7 @@ if Code.ensure_loaded?(Xandra) do
     end
 
     defp expr({:^, [], [_ix]}, _sources, _query) do
-      '?'
+      ~c"?"
     end
 
     defp expr({{:., _, [{:&, _, [_idx]}, field]}, _, []}, _sources, _query)
