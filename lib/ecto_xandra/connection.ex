@@ -59,22 +59,19 @@ if Code.ensure_loaded?(Xandra) do
     @impl true
     def execute(cluster, query, params, opts) do
       try do
-        stream = Xandra.Cluster.stream_pages!(cluster, query, params, opts)
+        case Xandra.Cluster.execute(cluster, query, params, opts) do
+          {:ok, %Xandra.Void{}} ->
+            {:ok, query, %{rows: nil, num_rows: 1}}
 
-        result =
-          Enum.reduce_while(stream, %{rows: [], num_rows: 0}, fn
-            %Xandra.Void{}, _acc ->
-              {:halt, %{rows: nil, num_rows: 1}}
+          {:ok, %Xandra.Page{} = page} ->
+            {:ok, query, process_page(page)}
 
-            %Xandra.SchemaChange{}, _acc ->
-              {:halt, %{rows: nil, num_rows: 1}}
+          {:ok, %Xandra.SchemaChange{} = schema_change} ->
+            {:ok, query, schema_change}
 
-            %Xandra.Page{} = page, %{rows: rows, num_rows: num_rows} ->
-              %{rows: new_rows, num_rows: new_num_rows} = process_page(page)
-              {:cont, %{rows: rows ++ new_rows, num_rows: num_rows + new_num_rows}}
-          end)
-
-        {:ok, query, result}
+          {:error, error} ->
+            {:error, error}
+        end
       rescue
         err ->
           {:error, err}
@@ -428,7 +425,7 @@ if Code.ensure_loaded?(Xandra) do
     end
 
     defp expr({:^, [], [_ix]}, _sources, _query) do
-      '?'
+      ~c"?"
     end
 
     defp expr({{:., _, [{:&, _, [_idx]}, field]}, _, []}, _sources, _query)
